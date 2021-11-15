@@ -1,8 +1,13 @@
 # Table of contents
 # Learn more at https://jupyterbook.org/customize/toc.html
-
 format: jb-book
 root: intro
-chapters:
-- file: markdown
-- file: mymarkdownfile
+parts:
+- chapters:
+  - file: markdown
+    sections:
+    - title: Overview
+      file: subfolder/mymarkdownfile
+      sections:
+      - title: Definitions
+        file: some/thing
