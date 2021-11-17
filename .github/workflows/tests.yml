@@ -33,9 +33,9 @@ jobs:
       - name: pre-commit
         uses: pre-commit/action@v2.0.3
 
-      - name: Show coverage
+      - name: Run unit tests
         run: |
-          python -m coverage report --show-missing
+          ./run_tests.sh
 
       - name: Run Coveralls
         run: |
