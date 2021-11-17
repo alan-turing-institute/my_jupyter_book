@@ -2,7 +2,7 @@ name: Coverage
 on:
   [pull_request]
 jobs:
-  coverage:
+  tests:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -19,9 +19,9 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Run unit tests
-        run: |
-          python -m coverage run -m unittest discover tests/
+      # Will run our tests with coverage for us
+      - name: pre-commit
+        uses: pre-commit/action@v2.0.3
 
       - name: Show coverage
         run: |
