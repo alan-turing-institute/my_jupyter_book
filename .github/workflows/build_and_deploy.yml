@@ -10,6 +10,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2.3.1
 
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ hashFiles('requirements.txt') }}
+
       # GitHub VM should already have Python 3.8
       # https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-README.md
       - name: Install Requirements

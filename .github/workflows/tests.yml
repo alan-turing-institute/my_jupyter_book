@@ -20,6 +20,11 @@ jobs:
         with:
           python-version: '3.8'
 
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ hashFiles('requirements.txt') }}
+
       - name: Install Requirements
         run: |
           pip install -r requirements.txt
