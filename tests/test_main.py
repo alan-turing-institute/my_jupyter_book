@@ -5,15 +5,11 @@ from unittest import mock
 
 from yaml import Loader, load
 
-from main import main, mask_rec, mask_toc
+from main import main, mask_parts, mask_toc
 
 
-class MyTestCase(unittest.TestCase):
-    """Test functions from the main module."""
-
-    def test_get_message(self):
-        actual = main()
-        self.assertIsNone(actual)
+class TestMain(unittest.TestCase):
+    """Test main function from the main module."""
 
     def test_main(self):
         # Redirect stdout
@@ -28,61 +24,161 @@ class MyTestCase(unittest.TestCase):
 class TestMask(unittest.TestCase):
     """Test the mask function from the main module."""
 
-    def test_mask_empty(self):
-        mask_toc({}, {})
+    maxDiff = None
 
     def test_mask_single_profile(self):
-        profiles = {"dsg": ["intro", "setup", "version_control/git"]}
+        whitelist = ["intro", "setup", "version_control/git"]
 
         with open("tests/test_files/test_one/_toc.yml", "r") as f:
-            toc = load(f, Loader=Loader)["parts"]
+            toc = load(f, Loader=Loader)
 
         with open("tests/test_files/test_one/dsg_toc.yml", "r") as f:
-            expected = load(f, Loader=Loader)["parts"]
+            expected = load(f, Loader=Loader)
 
-        actual = mask_toc(toc, profiles)
+        actual = mask_toc(toc, whitelist)
 
-        self.assertListEqual(expected, actual)
+        self.assertDictEqual(expected, actual)
 
-    def test_simple_case(self):
-        toc = {
-            "format": "jb-book",
-            "root": "intro",
-            "parts": [{"chapters": [{"file": "file1"}, {"file": "file2"}]}],
-        }
-        profiles = [
+    def test_mask_toc(self):
+        with mock.patch("main.mask_parts") as mock_parts:
+            mock_parts.return_value = 5.5
+
+            toc = {
+                "format": "jb-book",
+                "root": "intro",
+                "parts": [1, 2, 3],
+            }
+            whitelist = [
+                "a filename",
+            ]
+
+            expected = {
+                "format": "jb-book",
+                "root": "intro",
+                "parts": 5.5,
+            }
+            actual = mask_toc(toc, whitelist)
+
+            self.assertDictEqual(expected, actual)
+            mock_parts.assert_called_once_with([1, 2, 3], whitelist)
+
+    def test_chapters(self):
+        parts = [{"chapters": [{"file": "file1"}, {"file": "file2"}]}]
+        whitelist = [
             "file1",
         ]
 
-        expected = {
-            "format": "jb-book",
-            "root": "intro",
-            "parts": [{"chapters": [{"file": "file1"}]}],
-        }
-        actual = mask_toc(toc, profiles)
-        self.assertDictEqual(expected, actual)
-
-    def test_mask_rec_depth_one(self):
-        chapters = [{"file": "mypage1"}, {"file": "mypage2"}]
-        whitelist = ["mypage1"]
-
-        expected = [{"file": "mypage1"}]
-        actual = mask_rec(chapters, whitelist)
-
+        expected = [{"chapters": [{"file": "file1"}]}]
+        actual = mask_parts(parts, whitelist)
         self.assertListEqual(expected, actual)
 
-    def test_mask_rec_depth_two(self):
-        chapters = [
-            {"file": "mypage1", "sections": [{"file": "mypage3"}]},
-            {"file": "mypage2"},
+    def test_sections(self):
+        parts = [
+            {
+                "chapters": [
+                    {"file": "file1", "sections": [{"file": "file2"}]},
+                    {"file": "file3", "sections": [{"file": "file4"}]},
+                ]
+            },
+            {"chapters": [{"file": "file5"}]},
         ]
-        whitelist = ["mypage1"]
+        whitelist = [
+            "file1",
+            "file2",
+        ]
 
         expected = [
-            {"file": "mypage1"},
+            {
+                "chapters": [
+                    {"file": "file1", "sections": [{"file": "file2"}]},
+                ]
+            }
         ]
-        actual = mask_rec(chapters, whitelist)
+        actual = mask_parts(parts, whitelist)
+        self.assertListEqual(expected, actual)
 
+    def test_sub_sections(self):
+        parts = [
+            {
+                "chapters": [
+                    {
+                        "file": "file1",
+                        "sections": [
+                            {
+                                "file": "file2",
+                                "sections": [{"file": "file3"}, {"file": "file4"}],
+                            }
+                        ],
+                    },
+                ]
+            },
+        ]
+        whitelist = [
+            "file1",
+            "file2",
+            "file4",
+        ]
+
+        expected = [
+            {
+                "chapters": [
+                    {
+                        "file": "file1",
+                        "sections": [
+                            {"file": "file2", "sections": [{"file": "file4"}]}
+                        ],
+                    },
+                ]
+            }
+        ]
+        actual = mask_parts(parts, whitelist)
+        self.assertListEqual(expected, actual)
+
+    def test_preserves_title(self):
+        parts = [
+            {
+                "chapters": [
+                    {
+                        "file": "file1",
+                        "title": "title1",
+                        "sections": [
+                            {
+                                "file": "file2",
+                                "title": "title2",
+                                "sections": [
+                                    {"title": "title3", "file": "file3"},
+                                    {"title": "title4", "file": "file4"},
+                                ],
+                            }
+                        ],
+                    },
+                ]
+            },
+        ]
+        whitelist = [
+            "file1",
+            "file2",
+            "file3",
+        ]
+
+        expected = [
+            {
+                "chapters": [
+                    {
+                        "file": "file1",
+                        "title": "title1",
+                        "sections": [
+                            {
+                                "title": "title2",
+                                "file": "file2",
+                                "sections": [{"title": "title3", "file": "file3"}],
+                            }
+                        ],
+                    },
+                ]
+            }
+        ]
+        actual = mask_parts(parts, whitelist)
         self.assertListEqual(expected, actual)
 
 

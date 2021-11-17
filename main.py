@@ -1,26 +1,61 @@
 """Generate different editions of the book, as determined by profiles.yml."""
-from typing import Any, Dict, List
-
-# from copy import deepcopy
 
 
 def main():
     return 1
 
 
-def mask_rec(
-    parts_chapters_sections: List[Dict[str, Any]], whitelist: List[str]
-) -> None:
-    result = []
+def mask_parts(parts, whitelist):
+    """Strip files that don't match whitelist from parts."""
+    new_parts = []
 
-    # Each item is a dict
-    for item in parts_chapters_sections:
+    # This could be done better (recursively or otherwise) since parts,
+    # chapters and sections have similar structures but this is simpler
+    # if the nesting structure is relatively stable.
+    for part in parts:
+        new_chapters = []
 
-        if "file" in item:
-            if item["file"] in whitelist:
-                result.append(item)
+        for chapter in part["chapters"]:
+            new_chapter = dict()
 
-    return result
+            if chapter["file"] in whitelist:
+                new_chapter["file"] = chapter["file"]
+
+            if chapter.get("sections"):
+                new_sections = []
+                for section in chapter["sections"]:
+                    new_section = dict()
+
+                    if section.get("sections"):
+                        new_sub_sections = []
+
+                        for sub_section in section["sections"]:
+                            if sub_section["file"] in whitelist:
+                                new_sub_sections.append(sub_section)
+
+                        if new_sub_sections:
+                            new_section["sections"] = new_sub_sections
+
+                    if section["file"] in whitelist:
+                        new_section["file"] = section["file"]
+
+                    if new_section:
+                        if section.get("title"):
+                            new_section["title"] = section["title"]
+                        new_sections.append(new_section)
+
+                if new_sections:
+                    new_chapter["sections"] = new_sections
+
+            if new_chapter:
+                if chapter.get("title"):
+                    new_chapter["title"] = chapter["title"]
+                new_chapters.append(new_chapter)
+
+        if new_chapters:
+            new_parts.append({"chapters": new_chapters})
+
+    return new_parts
 
 
 def mask_toc(toc, whitelist):
@@ -32,22 +67,8 @@ def mask_toc(toc, whitelist):
 
     for key, value in toc.items():
         if key == "parts":
-            new_parts = []
+            new_toc[key] = mask_parts(value, whitelist)
 
-            # This could be done better (recursively or otherwise) since parts,
-            # chapters and sections have similar structure but this is simpler
-            # if the nesting structure is relatively stable.
-            for part in value:
-                new_chapters = []
-
-                for chapter in part["chapters"]:
-
-                    if chapter["file"] in whitelist:
-                        new_chapters.append({"file": chapter["file"]})
-
-                new_parts.append({"chapters": new_chapters})
-
-            new_toc["parts"] = new_parts
         else:
             # Copy anything else from the toc root level
             new_toc[key] = value
@@ -56,4 +77,4 @@ def mask_toc(toc, whitelist):
 
 
 if __name__ == "__main__":
-    main()
+    main()  # pragma: no cover
