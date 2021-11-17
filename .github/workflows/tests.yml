@@ -1,6 +1,6 @@
 name: Coverage
 on:
-  [pull_request]
+  [push, pull_request]
 jobs:
   tests:
     runs-on: ubuntu-latest
