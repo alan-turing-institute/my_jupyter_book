@@ -5,57 +5,35 @@ def main():
     return 1
 
 
-def mask_parts(parts, whitelist):
-    """Strip files that don't match whitelist from parts."""
-    new_parts = []
+def mask_parts(components, whitelist):
+    """something recursive"""
 
-    # This could be done better (recursively or otherwise) since parts,
-    # chapters and sections have similar structures but this is simpler
-    # if the nesting structure is relatively stable.
-    for part in parts:
-        new_chapters = []
+    new_components = []
 
-        for chapter in part["chapters"]:
-            new_chapter = dict()
+    for component in components:
+        # We could be in a part, a chapter or a section
+        new_component = dict()
 
-            if chapter["file"] in whitelist:
-                new_chapter["file"] = chapter["file"]
+        for key, value in component.items():
+            if key == "file":
+                if value in whitelist:
+                    new_component["file"] = value
 
-            if chapter.get("sections"):
-                new_sections = []
-                for section in chapter["sections"]:
-                    new_section = dict()
+            elif key in ("parts", "chapters", "sections"):
+                sub_components = mask_parts(value, whitelist)
+                if sub_components:
+                    new_component[key] = sub_components
 
-                    if section.get("sections"):
-                        new_sub_sections = []
+        if new_component:
 
-                        for sub_section in section["sections"]:
-                            if sub_section["file"] in whitelist:
-                                new_sub_sections.append(sub_section)
+            # Add other entries, like "title": "my title"
+            for key, value in component.items():
+                if key not in ("file", "parts", "chapters", "sections"):
+                    new_component[key] = value
 
-                        if new_sub_sections:
-                            new_section["sections"] = new_sub_sections
+            new_components.append(new_component)
 
-                    if section["file"] in whitelist:
-                        new_section["file"] = section["file"]
-
-                    if new_section:
-                        if section.get("title"):
-                            new_section["title"] = section["title"]
-                        new_sections.append(new_section)
-
-                if new_sections:
-                    new_chapter["sections"] = new_sections
-
-            if new_chapter:
-                if chapter.get("title"):
-                    new_chapter["title"] = chapter["title"]
-                new_chapters.append(new_chapter)
-
-        if new_chapters:
-            new_parts.append({"chapters": new_chapters})
-
-    return new_parts
+    return new_components
 
 
 def mask_toc(toc, whitelist):
