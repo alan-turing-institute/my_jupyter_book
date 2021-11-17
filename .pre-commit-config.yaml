@@ -30,10 +30,3 @@ repos:
   rev: v0.7.2.1
   hooks:
     - id: shellcheck
-
-- repo: local
-  hooks:
-    - id: unittest
-      name: unittest
-      language: script
-      entry: run_tests.sh
