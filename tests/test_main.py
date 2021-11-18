@@ -1,11 +1,11 @@
 """Tests for the hello module."""
 import unittest
-from io import StringIO
+from pathlib import Path
 from unittest import mock
 
 from yaml import Loader, load
 
-from main import main, mask_parts, mask_toc
+from main import build, generate_tocs, get_toc_and_profiles, main, mask_parts, mask_toc
 
 
 class TestMain(unittest.TestCase):
@@ -13,16 +13,14 @@ class TestMain(unittest.TestCase):
 
     def test_main(self):
         # Redirect stdout
-        with mock.patch("sys.stdout", new=StringIO()) as mock_out:
-            main()
+        with mock.patch("main.build") as mock_build:
+            main(["build", "/path/to/my/book/"])
 
-        actual = mock_out.getvalue().strip().split("\n")
-        expected = [""]
-        self.assertListEqual(expected, actual)
+            mock_build.assert_called_once_with(book_path=Path("/path/to/my/book/"))
 
 
 class TestMask(unittest.TestCase):
-    """Test the mask function from the main module."""
+    """Test the mask_x functions from the main module."""
 
     maxDiff = None
 
@@ -41,7 +39,7 @@ class TestMask(unittest.TestCase):
 
     def test_mask_toc(self):
         with mock.patch("main.mask_parts") as mock_parts:
-            mock_parts.return_value = 5.5
+            mock_parts.return_value = [5.5]
 
             toc = {
                 "format": "jb-book",
@@ -52,15 +50,11 @@ class TestMask(unittest.TestCase):
                 "a filename",
             ]
 
-            expected = {
-                "format": "jb-book",
-                "root": "intro",
-                "parts": 5.5,
-            }
+            expected = 5.5
             actual = mask_toc(toc, whitelist)
 
-            self.assertDictEqual(expected, actual)
-            mock_parts.assert_called_once_with([1, 2, 3], whitelist)
+            self.assertEqual(expected, actual)
+            mock_parts.assert_called_once_with([toc], whitelist)
 
     def test_chapters(self):
         parts = [{"chapters": [{"file": "file1"}, {"file": "file2"}]}]
@@ -180,6 +174,101 @@ class TestMask(unittest.TestCase):
         ]
         actual = mask_parts(parts, whitelist)
         self.assertListEqual(expected, actual)
+
+
+class TestGenerateTocs(unittest.TestCase):
+    """Test the generate_tocs function from the main module."""
+
+    def test_one_profile(self):
+        with mock.patch("main.mask_toc") as mock_mask_toc:
+            mock_mask_toc.return_value = {"new": "toc"}
+
+            toc = {"a": "toc"}
+            profiles = {"dsg": [], "phd": []}
+
+            actual = list(generate_tocs(toc, profiles))
+            expected = [("dsg", {"new": "toc"}), ("phd", {"new": "toc"})]
+            self.assertListEqual(expected, actual)
+
+
+class TestBuild(unittest.TestCase):
+    """Test the build function from the main module."""
+
+    def test_build(self):
+        with mock.patch("main.get_toc_and_profiles") as mock_get:
+            mock_get.return_value = {"a": "toc"}, {"dsg": "profile"}
+
+            with mock.patch("main.generate_tocs") as mock_generate:
+                mock_generate.return_value = [("dsg", {"new": "toc"})]
+
+                with mock.patch("main.copytree") as mock_copy:
+
+                    with mock.patch("main.open") as mock_open:
+
+                        with mock.patch("main.dump") as mock_dump:
+
+                            with mock.patch("main.run") as mock_run:
+
+                                with mock.patch("main.Path.mkdir") as mock_mkdir:
+
+                                    build(Path("mybook"))
+
+                                    mock_mkdir.assert_called_once_with(
+                                        parents=True, exist_ok=True
+                                    )
+
+                                mock_run.assert_called_once_with(
+                                    ["jupyter-book", "build", Path("mybook_dsg")],
+                                    check=True,
+                                )
+
+                            mock_dump.assert_called_once_with(
+                                {"new": "toc"},
+                                mock_open.return_value.__enter__.return_value,
+                            )
+
+                        mock_open.assert_called_with(Path("mybook_dsg/_toc.yml"), "w")
+
+                    mock_copy.assert_has_calls(
+                        [
+                            mock.call(
+                                Path("mybook"), Path("mybook_dsg"), dirs_exist_ok=True
+                            ),
+                            mock.call(
+                                Path("mybook_dsg/_build/html"),
+                                Path("mybook/_build/html/editions/dsg"),
+                                dirs_exist_ok=True,
+                            ),
+                        ]
+                    )
+
+                mock_generate.assert_called_once_with({"a": "toc"}, {"dsg": "profile"})
+
+            mock_get.assert_called_once_with(Path("mybook"))
+
+
+class TestGetTocAndProfiles(unittest.TestCase):
+    """Tet the get_toc_and_profiles function from the main module."""
+
+    def test_simple_case(self):
+        """Check that open() and load() are called."""
+
+        with mock.patch("main.open") as mock_open:
+            with mock.patch("main.load") as mock_load:
+                mock_load.return_value = 44
+
+                path = Path("mybook")
+                toc, profiles = get_toc_and_profiles(path)
+
+                try:
+                    mock_open.assert_any_call(Path("mybook/_toc.yml"))
+                    mock_open.assert_any_call(Path("mybook/profiles.yml"))
+                except AssertionError as e:
+                    print(mock_open.call_args)
+                    raise e
+
+                self.assertEqual(44, toc)
+                self.assertEqual(44, profiles)
 
 
 if __name__ == "__main__":
