@@ -10,6 +10,7 @@ from yaml import Loader, dump, load
 
 def get_toc_and_profiles(book_path):
     """Get the contents of _toc.yml and profiles.yml."""
+
     with open(book_path / "_toc.yml") as f:
         toc = load(f, Loader=Loader)
 
@@ -20,7 +21,7 @@ def get_toc_and_profiles(book_path):
 
 
 def build(book_path):
-    """Build the book."""
+    """Build the book's other editions."""
 
     toc, profiles = get_toc_and_profiles(book_path)
 
