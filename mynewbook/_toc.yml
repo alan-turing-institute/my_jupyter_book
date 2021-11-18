@@ -8,6 +8,5 @@ parts:
     sections:
     - title: Overview
       file: subfolder/mymarkdownfile
-      sections:
-      - title: Definitions
-        file: some/thing
+    - title: Definitions
+      file: some/thing
