@@ -17,6 +17,7 @@
 
 ### Run
 
-1. Build our example book with `python -m main build mynewbook`
+1. Build our example book with `jupyter-book build mynewbook`
+1. Build our other editions with `python -m main build mynewbook`
 1. Change to the `html` directory with `cd mynewbook/_build/html`
 1. Serve it (for development) with `python -m http.server`
